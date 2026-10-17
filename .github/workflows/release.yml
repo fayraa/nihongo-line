@@ -1,0 +1,72 @@
+name: Release
+# Publishes a release when the version in package.json changes on main (or when run by hand).
+# Installed apps read latest.yml from the newest release and update themselves (electron-updater).
+on:
+  push:
+    branches: [main]
+    paths: ['package.json', '.github/workflows/release.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      needed: ${{ steps.v.outputs.needed }}
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"; echo "v$v is already released."
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"; echo "v$v will be released."
+          fi
+      - if: steps.v.outputs.needed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.v.outputs.needed == 'true'
+        run: npm ci
+      - if: steps.v.outputs.needed == 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.v.outputs.needed == 'true'
+        run: npm run check
+      - if: steps.v.outputs.needed == 'true'
+        run: npm test
+  release:
+    needs: check
+    if: needs.check.outputs.needed == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build the Windows installer
+        run: npx electron-builder --win nsis --x64 --publish never
+      - name: Release notes
+        run: node scripts/release-notes.js
+      - name: Publish the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          ls -la dist
+          test -f dist/latest.yml
+          gh release create "v$VERSION" "dist/NihongoLine-Setup-$VERSION.exe" "dist/NihongoLine-Setup-$VERSION.exe.blockmap" dist/latest.yml \
+            --target "$GITHUB_SHA" --title "Nihongo Line $VERSION" --notes-file dist/release-notes.md

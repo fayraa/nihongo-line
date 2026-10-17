@@ -1,0 +1,80 @@
+{
+  "name": "nihongo-line",
+  "productName": "Nihongo Line",
+  "version": "1.4.0",
+  "description": "Learn Japanese from kana to N1, with conversation practice powered by Claude.",
+  "main": "main.js",
+  "author": "Nihongo Line",
+  "license": "UNLICENSED",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fayraa/nihongo-line.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "build:web": "node scripts/build-web.js",
+    "check": "node scripts/check.js",
+    "test": "node --test tests/desktop.test.js tests/ui.test.js",
+    "dist:dir": "electron-builder --win dir --x64 --publish never -c.win.signAndEditExecutable=false",
+    "dist": "electron-builder --win nsis --x64 --publish never",
+    "dist:portable": "electron-builder --win portable --x64 --publish never",
+    "release-notes": "node scripts/release-notes.js"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.10"
+  },
+  "devDependencies": {
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "playwright": "1.56.0"
+  },
+  "build": {
+    "appId": "app.nihongoline.desktop",
+    "productName": "Nihongo Line",
+    "copyright": "Nihongo Line",
+    "files": [
+      "main.js",
+      "preload.js",
+      "app/**/*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Nihongo Line",
+      "artifactName": "NihongoLine-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "NihongoLine-${version}-portable.exe"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.png",
+      "category": "public.app-category.education"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png",
+      "category": "Education"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "fayraa",
+        "repo": "nihongo-line",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
