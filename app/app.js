@@ -409,7 +409,7 @@ const Store = {
   }
 };
 const saveState = (delay) => { S.ts = Date.now(); Store.save('state', () => S, delay); };
-const saveCustom = () => Store.save('custom', () => CUSTOM, 600);
+const saveCustom = () => { CUSTOM.ts = Date.now(); Store.save('custom', () => CUSTOM, 600); };
 const saveDraft = () => {
   if (!TALK) { Store.local('talk', null); return; }
   const {sc, busy, ctl, error, ...rest} = TALK;
@@ -1883,8 +1883,11 @@ Store.init().then(r => {
   if (!r) return;
   if (r.state && (r.state.ts || 0) >= (S.ts || 0)) S = mergeState(defaultState(), r.state);
   else if (S.ts) saveState(200);
-  if (r.custom && Array.isArray(r.custom.cards) && (r.custom.cards.length || !CUSTOM.cards.length)) CUSTOM = r.custom;
-  else if (CUSTOM.cards.length) saveCustom();
+  /* own cards and grammar: keep whichever copy changed last (copies saved before 1.4.1 have no ts) */
+  const lt = CUSTOM.ts || 0, ct = (r.custom && r.custom.ts) || 0;
+  const cloudWins = r.custom && Array.isArray(r.custom.cards) && ((lt || ct) ? ct >= lt : (r.custom.cards.length || !CUSTOM.cards.length));
+  if (cloudWins) CUSTOM = r.custom;
+  else if (lt || CUSTOM.cards.length || (CUSTOM.grammar || []).length) saveCustom();
   buildIndex(); TTS.pick();
   if (!RD.cur) RD.list = null;
   if (!(VIEW === 'talk' && UI.inChat) && !RV && !DR && !RD.cur) render(); else renderTop();

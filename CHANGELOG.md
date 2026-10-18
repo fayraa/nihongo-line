@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1
+
+**Fixes**
+- Web version: your own cards and the extra grammar points you found with Claude could be replaced by an older copy when you opened the page, if the last save to your Claude account hadn't gone through. The newest copy is now kept, and saved to your account again.
+
 ## 1.4.0
 
 **New**

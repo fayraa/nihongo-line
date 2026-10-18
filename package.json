@@ -1,7 +1,7 @@
 {
   "name": "nihongo-line",
   "productName": "Nihongo Line",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Learn Japanese from kana to N1, with conversation practice powered by Claude.",
   "main": "main.js",
   "author": "Nihongo Line",

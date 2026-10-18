@@ -74,6 +74,7 @@ async function open(opts = {}) {
   await context.route(/fonts\.(googleapis|gstatic)\.com/, r => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
   await context.route(/cdn\.jsdelivr\.net\/npm\/wanakana@/, r => r.fulfill({ status: 200, contentType: 'application/javascript', body: fs.readFileSync(path.join(root, 'app', 'vendor', 'wanakana.min.js'), 'utf8') }));
   if (!opts.noClaude) await context.addInitScript(installStub, R);
+  if (opts.init) await context.addInitScript(opts.init.fn, opts.init.arg);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('page error: ' + e.message));
@@ -268,6 +269,37 @@ test('phone width: no section scrolls sideways', async () => {
   }
   assert.deepEqual(errors, []);
   await context.close();
+});
+
+/* a stand-in for the viewer's Claude database (web version), seeded with this device's copy and the cloud copy of own cards */
+function installCloud(seed) {
+  if (seed.local) localStorage.setItem('nl_custom', JSON.stringify(seed.local));
+  const docs = window.__docs = { 'data/users/u1/custom': seed.cloud };
+  const doc = p => ({ get: async () => ({ exists: !!docs[p], data: () => docs[p] }), set: async v => { docs[p] = JSON.parse(JSON.stringify(v)); }, delete: async () => { delete docs[p]; } });
+  const db = { doc, collection: () => ({ orderBy() { return this; }, limit() { return this; }, get: async () => ({ docs: [] }) }) };
+  const user = { id: async () => 'u1' };
+  const use = window.claude.use;
+  window.claude.use = async name => (name === 'db' ? db : name === 'user' ? user : use(name));
+}
+const card = w => ({ id: 'c_' + w, w, m: w });
+
+test('own cards: the copy changed last wins when the page opens', async () => {
+  /* added on this device after the last cloud save (e.g. the save failed): keep them and save them to the cloud */
+  let r = await open({ init: { fn: installCloud, arg: { local: { cards: [card('猫'), card('犬')], ts: 2000 }, cloud: { cards: [card('猫')], ts: 1000 } } } });
+  await r.page.waitForFunction(() => (window.__docs['data/users/u1/custom'].cards || []).length === 2);
+  assert.deepEqual(await nl(r.page, () => window.__nl.CUSTOM.cards.map(c => c.w)), ['猫', '犬']);
+  await r.context.close();
+  /* changed on another device since: the cloud copy wins */
+  r = await open({ init: { fn: installCloud, arg: { local: { cards: [card('猫')], ts: 1000 }, cloud: { cards: [card('猫'), card('鳥')], ts: 3000 } } } });
+  await r.page.waitForFunction(() => window.__nl.CUSTOM.cards.length === 2);
+  assert.deepEqual(await nl(r.page, () => window.__nl.CUSTOM.cards.map(c => c.w)), ['猫', '鳥']);
+  await r.context.close();
+  /* saved by an older version (no ts on either copy): the cloud copy still wins, as before */
+  r = await open({ init: { fn: installCloud, arg: { local: { cards: [card('猫'), card('犬')] }, cloud: { cards: [card('魚')] } } } });
+  await r.page.waitForFunction(() => window.__nl.CUSTOM.cards.length === 1);
+  assert.equal(await nl(r.page, () => window.__nl.CUSTOM.cards[0].w), '魚');
+  assert.deepEqual(r.errors, []);
+  await r.context.close();
 });
 
 test('without Claude, the page still works and says what is unavailable', async () => {
