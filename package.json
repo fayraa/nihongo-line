@@ -1,7 +1,7 @@
 {
   "name": "nihongo-line",
   "productName": "Nihongo Line",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Learn Japanese from kana to N1, with conversation practice powered by Claude.",
   "main": "main.js",
   "author": "Nihongo Line",
@@ -22,10 +22,10 @@
     "release-notes": "node scripts/release-notes.js"
   },
   "dependencies": {
-    "electron-updater": "^6.8.10"
+    "electron-updater": "^6.8.11"
   },
   "devDependencies": {
-    "electron": "^44.9.0",
+    "electron": "^44.9.3",
     "electron-builder": "^26.15.3",
     "playwright": "1.56.0"
   },
