@@ -5,6 +5,9 @@
 **Fixes**
 - Web version: your own cards and the extra grammar points you found with Claude could be replaced by an older copy when you opened the page, if the last save to your Claude account hadn't gone through. The newest copy is now kept, and saved to your account again.
 
+**Security**
+- Desktop app: updated to Electron 44.9.3, which blocks certificates from a compromised certificate authority, and to the latest updater, which checks downloaded updates more strictly.
+
 ## 1.4.0
 
 **New**
