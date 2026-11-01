@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: Playwright 1.56 has no Chromium for Ubuntu 26.04 (ubuntu-latest since Oct 2026)
     outputs:
       version: ${{ steps.v.outputs.version }}
       needed: ${{ steps.v.outputs.needed }}
