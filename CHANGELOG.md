@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.2
+
+**Security**
+- Desktop app: updated to Electron 44.10.2, which brings the latest Chromium and Node.js security fixes and safer handling of the app's own files.
+
+**Also in this version** (1.4.1 was never published on its own)
+- Web version: your own cards and the extra grammar points you found with Claude could be replaced by an older copy when you opened the page, if the last save to your Claude account hadn't gone through. The newest copy is now kept, and saved to your account again.
+- Desktop app: certificates from a compromised certificate authority are blocked, and the updater checks downloaded updates more strictly.
+
 ## 1.4.1
 
 **Fixes**
