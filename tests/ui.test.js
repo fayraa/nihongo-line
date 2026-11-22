@@ -56,6 +56,7 @@ function installStub(R) {
   const answer = async (input, opts, json) => {
     calls.push(text(input).slice(0, 200));
     await new Promise(r => setTimeout(r, 40));
+    if (window.__hold && json && pick(input) === R.explain) await window.__hold; /* lets a test act while a breakdown is on its way */
     if (opts && opts.signal && opts.signal.aborted) throw { code: 'cancelled', message: 'Cancelled' };
     const value = json ? pick(input) : null;
     const out = json ? JSON.stringify(value) : 'はい、つながりました。';
@@ -186,6 +187,30 @@ test('reading: write a text, tap sentences, explain, quiz, translate, upload', a
   await page.waitForSelector('.reader .rd-title');
   assert.match(await page.textContent('.rd-title'), /メモ/);
   assert.equal(await nl(page, () => window.__nl.RD.list.length), 2);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('reading: a text deleted while its breakdown loads stays deleted', async () => {
+  const { page, context, errors } = await open();
+  await go(page, 'read');
+  await page.click('[data-action="rd-write"]');
+  await page.waitForSelector('.reader .rs');
+  await nl(page, () => { window.__hold = new Promise(r => { window.__release = r; }); });
+  await page.click('.rs[data-k="0_0"]');
+  await page.click('[data-action="rd-explain"]');
+  await page.click('[data-action="rd-delete"]');
+  await page.click('[data-action="rd-delete"]');
+  await toast(page, /Deleted/);
+  await nl(page, () => { window.__release(); window.__hold = null; });
+  await page.waitForFunction(() => window.__nl.RD.explaining === null);
+  await page.waitForTimeout(100);
+  assert.equal(await nl(page, () => window.__nl.RD.list.length), 0);
+  assert.equal(await nl(page, () => (JSON.parse(localStorage.getItem('nl_readings') || '[]')).length), 0);
+  await page.reload(); await page.waitForSelector('#view h1');
+  await go(page, 'read');
+  await page.waitForFunction(() => window.__nl.RD.list !== null);
+  assert.equal(await nl(page, () => window.__nl.RD.list.length), 0);
   assert.deepEqual(errors, []);
   await context.close();
 });

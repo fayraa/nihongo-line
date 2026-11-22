@@ -1303,7 +1303,8 @@ const READ_GUIDE = {
   N1:'JLPT N1: native-level prose with rich vocabulary and nuance'
 };
 const FURI_RULE = 'Write every word that contains kanji with its reading in square brackets immediately after it, e.g. 東京[とうきょう]に行[い]きました。 Never put brackets after kana.';
-const RD = { list:null, cur:null, sel:null, gen:null, tab:'write', length:'medium', playing:null, explaining:null, fileName:'', modeTouched:false };
+const RD = { list:null, cur:null, sel:null, gen:null, tab:'write', length:'medium', playing:null, explaining:null, fileName:'', modeTouched:false,
+  gone:new Set(), epoch:0 }; /* deleted ids and a counter bumped by erase/backup load, so a late breakdown can't bring a text back */
 const jpRatio = s => { const t = String(s || '').replace(/\s/g, ''); if (!t) return 0; const m = t.match(/[぀-ヿ㐀-鿿]/g); return (m ? m.length : 0) / t.length; };
 
 function normParas(p) {
@@ -1535,8 +1536,8 @@ function rdMove(d) {
 async function rdExplain() {
   const rd = RD.cur; const key = RD.sel; const s = key && rdSentence(key); if (!s || RD.explaining) return;
   const sample = await getSample(); if (!sample) { toast(aiError({code:'not_granted'})); return; }
-  RD.explaining = key; rdRender();
-  try { rd.explains[key] = normExplain(await sample.json(explainPrompt(s.ja, s.en, rd.level), {modelTier:'quick', cache:{gcTime:86400000}})); saveReading(rd); }
+  RD.explaining = key; rdRender(); const ep = RD.epoch;
+  try { rd.explains[key] = normExplain(await sample.json(explainPrompt(s.ja, s.en, rd.level), {modelTier:'quick', cache:{gcTime:86400000}})); if (RD.epoch === ep && !RD.gone.has(rd.id)) saveReading(rd); }
   catch (e) { rd.explains[key] = {error:aiError(e)}; }
   finally { RD.explaining = null; if (RD.cur === rd && VIEW === 'read') rdRender(); }
 }
@@ -1651,7 +1652,7 @@ function applyBackup() {
   buildIndex(); TTS.pick(); saveState(10); saveCustom(); saveDraft();
   (Array.isArray(d.talks) ? d.talks.slice(0, 20).reverse() : []).forEach(t => { if (t && t.id && Array.isArray(t.msgs)) Store.putTalk(clone(t)); });
   (Array.isArray(d.readings) ? d.readings.slice(0, 30) : []).forEach(r => { if (r && r.id && Array.isArray(r.paragraphs)) Store.putReading(clone(r)); });
-  rdStop(); RD.cur = null; RD.sel = null; RD.list = null;
+  rdStop(); RD.cur = null; RD.sel = null; RD.list = null; RD.epoch++;
   PENDING_IMPORT = null; closeSheet(); render(); toast('Backup loaded.');
 }
 function applySetting(k, v) {
@@ -1758,7 +1759,7 @@ const ACT = {
   'rd-check': () => rdCheck(),
   'rd-delete': async a => {
     if (!a.dataset.armed) { a.dataset.armed = '1'; a.textContent = 'Tap again to delete'; setTimeout(() => { if (a.isConnected) { delete a.dataset.armed; a.textContent = 'Delete this text'; } }, 4000); return; }
-    const id = RD.cur && RD.cur.id; if (!id) return; rdStop();
+    const id = RD.cur && RD.cur.id; if (!id) return; rdStop(); RD.gone.add(id);
     RD.list = (RD.list || []).filter(r => r.id !== id); RD.cur = null; RD.sel = null; render(); main.scrollTop = 0;
     await Store.deleteReading(id); toast('Deleted.');
   },
@@ -1782,7 +1783,7 @@ const ACT = {
     if (!a.dataset.armed) { a.dataset.armed = '1'; a.textContent = 'Tap again to erase everything'; setTimeout(() => { if (a.isConnected) { delete a.dataset.armed; a.textContent = 'Erase all progress'; } }, 5000); return; }
     if (TALK && TALK.ctl) TALK.ctl.abort();
     S = defaultState(); CUSTOM = {cards:[]}; TALK = null; RV = null; DR = null; UI.inChat = false; UI.gramLv = null; buildIndex();
-    rdStop(); RD.cur = null; RD.sel = null; RD.list = [];
+    rdStop(); RD.cur = null; RD.sel = null; RD.list = []; RD.epoch++;
     saveState(10); saveCustom(); saveDraft(); Store.local('lessons', null); Store.clearTalks(); Store.clearReadings(); closeSheet(); render(); toast('Progress erased.');
   }
 };
