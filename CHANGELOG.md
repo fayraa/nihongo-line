@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.3
+
+**Fixes**
+- Reading: if you deleted a text while its word-by-word breakdown was still loading, the text could come back in your library once the breakdown arrived. A deleted text now stays deleted, and the same goes for texts removed by **Erase all progress** or by loading a backup.
+
+**Security**
+- Desktop app: updated to Electron 44.11.5, with the latest fixes from Chromium and the other browser components it is built on.
+
 ## 1.4.2
 
 **Security**
